@@ -1,3 +1,5 @@
+"""Module that automatically sorts new items in a Todoist project"""
+
 import datetime
 import sqlite3
 import uuid
@@ -7,6 +9,7 @@ from todoist.api import TodoistAPI
 
 
 class Sorter:
+    """The Todoist Sorter"""
     def __init__(self, api_token, project_id):
         self.token = api_token
         self.api = TodoistAPI(api_token)
@@ -18,36 +21,51 @@ class Sorter:
         self.dbtablename = self.dbtableprefix + str(project_id)
 
     def initialize_db(self):
+        """Connect to and initialize SQLite DB"""
         conn = sqlite3.connect(self.dbfilename)
         db = conn.cursor()
-        query = 'CREATE TABLE IF NOT EXISTS "{}" ("item_project" INT, "item_content" TEXT, "item_section" INT, "last_updated" TEXT)'.format(self.dbtablename)
+
+        query = f"""
+        CREATE TABLE IF NOT EXISTS {self.dbtablename}
+        ("item_project" INT, "item_content" TEXT, "item_section" INT, "last_updated" TEXT)
+        """
+
         db.execute(query)
         db.close()
 
     def get_section_name(self, section_id):
-        sectionList = self.api.state['sections']
-        for section in sectionList:
+        """Return the section name based on ID"""
+        section_list = self.api.state['sections']
+        for section in section_list:
             if section['id'] == section_id:
                 return section['name']
         # RETURN FALSE IF NO MATCH IS FOUND
         return False
 
     def get_historic_section(self, item_id):
+        """Obtain the previously-used section for an item"""
         item = self.api.items.get_by_id(item_id)
 
         self.initialize_db()
         conn = sqlite3.connect(self.dbfilename)
-        selectQuery = "SELECT item_content, item_section FROM {} WHERE item_content = '{}' LIMIT 1".format(self.dbtablename, item['content'].lower())
+
+        select_query = f"""
+        SELECT item_content, item_section
+        FROM {self.dbtablename}
+        WHERE item_content = '{item['content'].lower()}'
+        LIMIT 1
+        """
+
         db = conn.cursor()
-        result = db.execute(selectQuery).fetchone()
+        result = db.execute(select_query).fetchone()
         db.close()
         conn.commit()
         if result is not None:
             return result[1]
-        else:
-            return None
+        return None
 
     def capitalize_item(self, item_id):
+        """Capitalize the first letter of the item"""
         item_content = self.api.items.get_by_id(item_id)['content']
         if not item_content[0].isupper():
             new_content = item_content[0].upper() + item_content[1:]
@@ -57,21 +75,16 @@ class Sorter:
             item.update(content=new_content)
             self.api.commit()
 
-    def clean_item(self, item_id):
-        # TODO
-        item_content = self.api.items.get_by_id(item_id)['content']
-        item_content_clean = ''.join([i for i in item_content if not i.isdigit()])
-        return item_content_clean
-
 
     def learn(self):
+        """Read all items in Todoist and learn their preferred sections"""
         self.initialize_db()
         conn = sqlite3.connect(self.dbfilename)
         query = ""
 
-        itemList = self.api.state['items']
-        for item in itemList:
-            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")  # USED TO INSERT INTO DB WHEN UPDATING
+        item_list = self.api.state['items']
+        for item in item_list:
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")  # USED FOR DB UPDATES
             if item['project_id'] == self.project_id and item['section_id'] is not None:
 
                 # GET HISTORIC SECTION
@@ -79,12 +92,26 @@ class Sorter:
                 if historic_section == item['section_id']:  # NO UPDATE NEEDED
                     pass
 
-                if historic_section is None:  # ADD ITEM TO DB
-                    query = "INSERT INTO {} (item_project, item_content, item_section, last_updated) VALUES ({},'{}',{}, '{}')".format(self.dbtablename, item['project_id'], item['content'].lower(),
-                                                                                                                                       item['section_id'], timestamp)
+                elif historic_section is None:  # ADD ITEM TO DB
+                    query = f"""
+                    INSERT INTO {self.dbtablename}
+                    (item_project, item_content, item_section, last_updated)
+                    VALUES (
+                        {item['project_id']},
+                        '{item['content'].lower()}',
+                        {item['section_id']},
+                        '{timestamp}'
+                    )
+                    """
 
-                if historic_section is not None and historic_section != item['section_id']:  # UPDATE CURRENT SECTION
-                    query = "UPDATE {} SET item_section = {}, last_updated = '{}' WHERE item_content = '{}'".format(self.dbtablename, item['section_id'], timestamp, item['content'].lower())
+                else:  # UPDATE CURRENT SECTION
+                    query = f"""
+                    UPDATE {self.dbtablename}
+                    SET
+                    item_section = {item['section_id']},
+                    last_updated = '{timestamp}'
+                    WHERE item_content = '{item['content'].lower()}'
+                    """
 
                 db = conn.cursor()
                 db.execute(query)
@@ -101,10 +128,20 @@ class Sorter:
     #         self.api.commit()
 
     def adjust_item_section(self, item_id):
-        # USING MANUAL REQUESTS METHOD AS SECTIONS ARENT SUPPORTED IN CURRENT VERSION OF TODOIST SYNC API-LIBRARY
+        """Change the section of an item"""
+        # USING MANUAL METHOD AS SECTIONS ARENT SUPPORTED IN CURRENT VERSION OF TODOIST SYNC API
         state = uuid.uuid4()
-        apiUrlSync = "https://api.todoist.com/sync/v8/sync"
-        commands = '[{"type": "item_move", "uuid": "' + str(state) + '", "args": {"id": ' + str(item_id) + ', "section_id": ' + str(self.get_historic_section(item_id)) + '}}]'
+        api_url_sync = "https://api.todoist.com/sync/v8/sync"
+        commands = f"""
+        [{{
+            "type": "item_move",
+            "uuid": "{str(state)}",
+            "args": {{
+                "id": {str(item_id)},
+                "section_id": {str(self.get_historic_section(item_id))}
+            }}
+        }}]
+        """
 
         payload = {"token": str(self.token), 'commands': commands}
-        requests.post(apiUrlSync, data=payload).json()
+        requests.post(api_url_sync, data=payload, timeout=10).json()

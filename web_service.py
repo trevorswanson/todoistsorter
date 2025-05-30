@@ -1,25 +1,28 @@
+"""Provides a web service to host the Todoist Sorter"""
 import datetime
 import json
 import os
+import sys
 
 from flask import Flask, request
 
-from TodoistSorter import Sorter
+from todoist_sorter import Sorter
 
 app = Flask(__name__)
 
 
 @app.route("/todoist", methods=['POST'])
 def webhook():
+    """Expose a webhook for Todoist to send updates"""
     project = os.getenv("PROJECT", None)
     api_token = os.getenv("APITOKEN", None)
 
     if None in (project, api_token):
         print("Environment variables cannot be None - exiting.")
-        exit(1)
+        sys.exit(1)
 
-    bytesData = request.data.decode('ASCII')
-    body = json.loads(bytesData)
+    bytes_data = request.data.decode('ASCII')
+    body = json.loads(bytes_data)
 
     # USED FOR VERBOSE LOGGING
     #print(json.dumps(body, indent=4, sort_keys=True))
@@ -39,16 +42,20 @@ def webhook():
         api.learn()
         api.adjust_item_section(item_id)
 
-    if (event_name == "item:completed" or event_name == "item:updated") and str(project_id) == str(project):
+    elif (event_name in ("item:completed", "item:updated")) and str(project_id) == str(project):
         print(timestamp, event_name, event_data['content'])
         api = Sorter(api_token, project_id)
         api.learn()
+
+    else:
+        return "", 422
 
     return "", 200
 
 
 @app.route("/", methods=['POST', 'GET'])
 def hello():
+    """Default endpoint for health checks"""
     return "TodoistSorter service is running..."
 
 
