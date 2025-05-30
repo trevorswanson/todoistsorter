@@ -1,8 +1,8 @@
 """Provides a web service to host the Todoist Sorter"""
-import datetime
 import json
 import os
 import sys
+import logging
 
 from flask import Flask, request
 
@@ -10,44 +10,46 @@ from todoist_sorter import Sorter
 
 app = Flask(__name__)
 
+logging.getLogger().setLevel(level=os.getenv('LOGLEVEL', 'INFO').upper())
+logging.basicConfig(
+    format="%(name)s: %(asctime)s | %(levelname)s | %(filename)s:%(lineno)s | %(message)s")
+
+# Validate necessary config is provided
+project = os.getenv("PROJECT", None)
+api_token = os.getenv("APITOKEN", None)
+
+if None in (project, api_token):
+    logging.error("Environment variables cannot be None - exiting.")
+    sys.exit(1)
+
+# Perform a one-time learn of all tasks
+api = Sorter(api_token, project)
+api.learn_all()
 
 @app.route("/todoist", methods=['POST'])
 def webhook():
     """Expose a webhook for Todoist to send updates"""
-    project = os.getenv("PROJECT", None)
-    api_token = os.getenv("APITOKEN", None)
-
-    if None in (project, api_token):
-        print("Environment variables cannot be None - exiting.")
-        sys.exit(1)
-
     bytes_data = request.data.decode('ASCII')
     body = json.loads(bytes_data)
 
-    # USED FOR VERBOSE LOGGING
-    #print(json.dumps(body, indent=4, sort_keys=True))
-    #print("----------------------------")
+    logging.debug(json.dumps(body, indent=4, sort_keys=True))
 
     event_name = body['event_name']
     event_data = body['event_data']
-    item_id = event_data['id']
     project_id = event_data['project_id']
 
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-
     if event_name == "item:added" and str(project_id) == str(project):
-        print(timestamp, event_name, event_data['content'])
-        api = Sorter(api_token, project_id)
-        api.capitalize_item(item_id)
-        api.learn()
-        api.adjust_item_section(item_id)
+        logging.info("%s | %s", event_name, event_data['content'])
+        api.capitalize_item(event_data['id'], event_data['content'])
+        api.learn(event_data)
+        api.adjust_item_section(event_data['id'])
 
     elif (event_name in ("item:completed", "item:updated")) and str(project_id) == str(project):
-        print(timestamp, event_name, event_data['content'])
-        api = Sorter(api_token, project_id)
-        api.learn()
+        logging.info("%s | %s", event_name, event_data['content'])
+        api.learn(event_data)
 
     else:
+        logging.warning("Unhandled event %s | %s", event_name, json.dumps(event_data))
         return "", 422
 
     return "", 200
