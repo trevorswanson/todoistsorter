@@ -9,7 +9,7 @@ from todoist_api_python.api import TodoistAPI
 
 class Sorter:
     """The Todoist Sorter"""
-    def __init__(self, api_token, project_id, dbfilename="data/Todoist.db"):
+    def __init__(self, api_token, project_id, dbfilename="/app/data/Todoist.db"):
         self.token = api_token
         self.api = TodoistAPI(api_token)
 
@@ -85,8 +85,8 @@ class Sorter:
         section_id = None
         if task is not None:
             section_id = task.section_id
-            content = item.content
-            project_id = item.project_id
+            content = task.content
+            project_id = task.project_id
         elif item is not None:
             section_id = item['section_id']
             content = item['content']
