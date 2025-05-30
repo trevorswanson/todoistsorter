@@ -22,12 +22,12 @@ class Sorter:
         conn = sqlite3.connect(self.dbfilename)
         cursor = conn.cursor()
 
-        query = """
-        CREATE TABLE IF NOT EXISTS ?
+        query = f"""
+        CREATE TABLE IF NOT EXISTS {self.dbtablename}
         ("item_project" INT, "item_content" TEXT, "item_section" INT, "last_updated" TEXT)
         """
 
-        cursor.execute(query, (self.dbtablename))
+        cursor.execute(query)
         cursor.close()
         conn.commit()
         return conn
@@ -49,9 +49,9 @@ class Sorter:
 
         conn = self.initialize_db()
 
-        select_query = """
+        select_query = f"""
         SELECT item_content, item_section
-        FROM ?
+        FROM {self.dbtablename}
         WHERE item_content = ?
         LIMIT 1
         """
@@ -60,7 +60,6 @@ class Sorter:
         result = cursor.execute(
             select_query,
             (
-                self.dbtablename,
                 item_name.lower()
             )
         ).fetchone()
@@ -98,15 +97,14 @@ class Sorter:
             cursor = conn.cursor()
 
             if historic_section is None:  # ADD ITEM TO DB
-                query = """
-                INSERT INTO ?
+                query = f"""
+                INSERT INTO {self.dbtablename}
                 (item_project, item_content, item_section, last_updated)
                 VALUES (?,?,?,?)
                 """
                 cursor.execute(
                     query,
                     (
-                        self.dbtablename,
                         item['project_id'],
                         item['content'].lower(),
                         item['section_id'],
@@ -115,8 +113,8 @@ class Sorter:
                 )
 
             else:  # UPDATE CURRENT SECTION
-                query = """
-                UPDATE ?
+                query = f"""
+                UPDATE {self.dbtablename}
                 SET
                 item_section = ?,
                 last_updated = ?
@@ -126,7 +124,6 @@ class Sorter:
                 cursor.execute(
                     query,
                     (
-                        self.dbtablename,
                         item['section_id'],
                         timestamp,
                         item['content'].lower(),
