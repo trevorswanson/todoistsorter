@@ -57,7 +57,12 @@ class Sorter:
         """
 
         db = conn.cursor()
-        result = db.execute(select_query,(item['content'].lower())).fetchone()
+        result = db.execute(
+            select_query,
+            (
+                item['content'].lower()
+            )
+        ).fetchone()
         db.close()
         conn.commit()
         if result is not None:
@@ -100,7 +105,15 @@ class Sorter:
                     (item_project, item_content, item_section, last_updated)
                     VALUES (?,?,?,?)
                     """
-                    db.execute(query,(item['project_id'],item['content'].lower(),item['section_id],timestamp']))
+                    db.execute(
+                        query,
+                        (
+                            item['project_id'],
+                            item['content'].lower(),
+                            item['section_id'],
+                            timestamp
+                        )
+                    )
 
                 else:  # UPDATE CURRENT SECTION
                     query = f"""
@@ -110,7 +123,14 @@ class Sorter:
                     last_updated = ?
                     WHERE item_content = ?
                     """
-                    db.execute(query,(item['section_id'],timestamp,item['content'].lower()))
+                    db.execute(
+                        query,
+                        (
+                            item['section_id'],
+                            timestamp,
+                            item['content'].lower()
+                        )
+                    )
 
                 db.close()
                 query = ""
