@@ -52,12 +52,12 @@ class Sorter:
         select_query = f"""
         SELECT item_content, item_section
         FROM {self.dbtablename}
-        WHERE item_content = '{item['content'].lower()}'
+        WHERE item_content = ?
         LIMIT 1
         """
 
         db = conn.cursor()
-        result = db.execute(select_query).fetchone()
+        result = db.execute(select_query,(item['content'].lower())).fetchone()
         db.close()
         conn.commit()
         if result is not None:
@@ -92,29 +92,26 @@ class Sorter:
                 if historic_section == item['section_id']:  # NO UPDATE NEEDED
                     pass
 
-                elif historic_section is None:  # ADD ITEM TO DB
+                db = conn.cursor()
+
+                if historic_section is None:  # ADD ITEM TO DB
                     query = f"""
                     INSERT INTO {self.dbtablename}
                     (item_project, item_content, item_section, last_updated)
-                    VALUES (
-                        {item['project_id']},
-                        '{item['content'].lower()}',
-                        {item['section_id']},
-                        '{timestamp}'
-                    )
+                    VALUES (?,?,?,?)
                     """
+                    db.execute(query,(item['project_id'],item['content'].lower(),item['section_id],timestamp']))
 
                 else:  # UPDATE CURRENT SECTION
                     query = f"""
                     UPDATE {self.dbtablename}
                     SET
-                    item_section = {item['section_id']},
-                    last_updated = '{timestamp}'
-                    WHERE item_content = '{item['content'].lower()}'
+                    item_section = ?,
+                    last_updated = ?
+                    WHERE item_content = ?
                     """
+                    db.execute(query,(item['section_id'],timestamp,item['content'].lower()))
 
-                db = conn.cursor()
-                db.execute(query)
                 db.close()
                 query = ""
 
