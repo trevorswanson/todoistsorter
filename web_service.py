@@ -41,12 +41,12 @@ def webhook():
     if event_name == "item:added" and str(project_id) == str(project):
         logging.info("%s | %s", event_name, event_data['content'])
         api.capitalize_item(event_data['id'], event_data['content'])
-        api.learn(event_data)
+        api.learn(item=event_data)
         api.adjust_item_section(event_data['id'])
 
     elif (event_name in ("item:completed", "item:updated")) and str(project_id) == str(project):
         logging.info("%s | %s", event_name, event_data['content'])
-        api.learn(event_data)
+        api.learn(item=event_data)
 
     else:
         logging.warning("Unhandled event %s | %s", event_name, json.dumps(event_data))

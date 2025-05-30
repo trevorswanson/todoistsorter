@@ -2,6 +2,7 @@
 
 import datetime
 import sqlite3
+import logging
 
 from todoist_api_python.api import TodoistAPI
 
@@ -78,14 +79,28 @@ class Sorter:
             # WRITE UPDATED CONTENT TO TODOIST
             self.api.update_task(item_id, content=new_content)
 
-    def learn(self, item, conn=None):
+    def learn(self, task=None, item=None, conn=None):
         """Read all items in Todoist and learn their preferred sections"""
-        if item['section_id'] is not None:
+
+        section_id = None
+        if task is not None:
+            section_id = task.section_id
+            content = item.content
+            project_id = item.project_id
+        elif item is not None:
+            section_id = item['section_id']
+            content = item['content']
+            project_id = item['project_id']
+        else:
+            logging.error("No task presented to learn function")
+            return None
+
+        if section_id is not None:
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")  # USED FOR DB UPDATES
 
             # GET HISTORIC SECTION
-            historic_section = self.get_historic_section(item_name=item['content'])
-            if historic_section == item['section_id']:  # NO UPDATE NEEDED
+            historic_section = self.get_historic_section(item_name=content)
+            if historic_section == section_id:  # NO UPDATE NEEDED
                 pass
 
             # Reuse existing DB if possible
@@ -105,9 +120,9 @@ class Sorter:
                 cursor.execute(
                     query,
                     (
-                        item['project_id'],
-                        item['content'].lower(),
-                        item['section_id'],
+                        project_id,
+                        content.lower(),
+                        section_id,
                         timestamp
                     )
                 )
@@ -124,10 +139,10 @@ class Sorter:
                 cursor.execute(
                     query,
                     (
-                        item['section_id'],
+                        section_id,
                         timestamp,
-                        item['content'].lower(),
-                        item['project_id']
+                        content.lower(),
+                        project_id
                     )
                 )
 
@@ -141,9 +156,10 @@ class Sorter:
         """Learn the sections of all tasks"""
         conn = self.initialize_db()
 
-        item_list = self.api.get_tasks(project_id=self.project_id)
-        for item in item_list:
-            self.learn(item, conn)
+        response = self.api.get_tasks(project_id=self.project_id)
+        for task_list in response:
+            for task in task_list:
+                self.learn(task=task, conn=conn)
 
         conn.commit()
         conn.close()
