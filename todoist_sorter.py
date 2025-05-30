@@ -120,13 +120,6 @@ class Sorter:
 
         conn.commit()
 
-    # def adjust_item_section_UNSUPPORTED(self, item_id):
-    #     # TODO WRITE UPDATED CONTENT TO TODOIST
-    #     if self.get_historic_section(item_id) is not None:
-    #         item = self.api.items.get_by_id(item_id)
-    #         item.move(parent_id=item_id)
-    #         self.api.commit()
-
     def adjust_item_section(self, item_id):
         """Change the section of an item"""
         # USING MANUAL METHOD AS SECTIONS ARENT SUPPORTED IN CURRENT VERSION OF TODOIST SYNC API
