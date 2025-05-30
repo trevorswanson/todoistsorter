@@ -61,7 +61,7 @@ class Sorter:
         result = cursor.execute(
             select_query,
             (
-                item_name.lower()
+                item_name.lower(),
             )
         ).fetchone()
         cursor.close()
