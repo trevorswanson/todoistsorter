@@ -42,7 +42,7 @@ def webhook():
         logging.info("%s | %s", event_name, event_data['content'])
         api.capitalize_item(event_data['id'], event_data['content'])
         api.learn(item=event_data)
-        api.adjust_item_section(event_data['id'])
+        api.adjust_item_section(event_data)
 
     elif (event_name in ("item:completed", "item:updated")) and str(project_id) == str(project):
         logging.info("%s | %s", event_name, event_data['content'])
