@@ -92,7 +92,7 @@ class Sorter:
             content = item['content']
             project_id = item['project_id']
         else:
-            logging.error("No task presented to learn function")
+            print("No task presented to learn function")
             return None
 
         if section_id is not None:
