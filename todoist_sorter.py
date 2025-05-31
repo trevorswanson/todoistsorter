@@ -149,7 +149,6 @@ class Sorter:
             if close_when_done:
                 conn.commit()
                 conn.close()
-        return None
 
 
     def reconcile(self):
