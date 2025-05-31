@@ -29,8 +29,11 @@ api = Sorter(api_token, project)
 # Perform a one-time learn of all tasks
 def reconcile():
     """Request a full reconcile instead of waiting for webhooks"""
+    logging.debug("Initiating reconcile loop")
     api.reconcile()
     threading.Timer(sync_interval, reconcile).start()
+
+reconcile()
 
 @app.route("/todoist", methods=['POST'])
 def webhook():
@@ -69,4 +72,3 @@ def hello():
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5005)
-    reconcile()

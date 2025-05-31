@@ -9,7 +9,7 @@ from todoist_api_python.api import TodoistAPI
 
 class Sorter:
     """The Todoist Sorter"""
-    def __init__(self, api_token, project_id, dbfilename="/app/data/Todoist.db"):
+    def __init__(self, api_token, project_id, dbfilename="data/Todoist.db"):
         self.token = api_token
         self.api = TodoistAPI(api_token)
 
@@ -75,6 +75,7 @@ class Sorter:
         """Capitalize the first letter of the item"""
         if not item_content[0].isupper():
             new_content = item_content[0].upper() + item_content[1:]
+            logging.debug("Capitalized task \"%s\" to \"%s\"", item_content, new_content)
 
             # WRITE UPDATED CONTENT TO TODOIST
             self.api.update_task(item_id, content=new_content)
@@ -100,55 +101,57 @@ class Sorter:
             # GET HISTORIC SECTION
             historic_section = self.get_historic_section(item_name=content)
             if historic_section == section_id:  # NO UPDATE NEEDED
-                pass
-
-            # Reuse existing DB if possible
-            if None is conn:
-                conn = self.initialize_db()
-                close_when_done = True
+                logging.debug("Task %s is already in the correct section %s", content, section_id)
             else:
-                close_when_done = False
-            cursor = conn.cursor()
+                # Reuse existing DB if possible
+                if None is conn:
+                    conn = self.initialize_db()
+                    close_when_done = True
+                else:
+                    close_when_done = False
+                cursor = conn.cursor()
 
-            if historic_section is None:  # ADD ITEM TO DB
-                query = f"""
-                INSERT INTO {self.dbtablename}
-                (item_project, item_content, item_section, last_updated)
-                VALUES (?,?,?,?)
-                """
-                cursor.execute(
-                    query,
-                    (
-                        project_id,
-                        content.lower(),
-                        section_id,
-                        timestamp
+                if historic_section is None:  # ADD ITEM TO DB
+                    logging.debug("Discovered new item %s in section %s", content, section_id)
+                    query = f"""
+                    INSERT INTO {self.dbtablename}
+                    (item_project, item_content, item_section, last_updated)
+                    VALUES (?,?,?,?)
+                    """
+                    cursor.execute(
+                        query,
+                        (
+                            project_id,
+                            content.lower(),
+                            section_id,
+                            timestamp
+                        )
                     )
-                )
 
-            else:  # UPDATE CURRENT SECTION
-                query = f"""
-                UPDATE {self.dbtablename}
-                SET
-                item_section = ?,
-                last_updated = ?
-                WHERE item_content = ?
-                AND item_project = ?
-                """
-                cursor.execute(
-                    query,
-                    (
-                        section_id,
-                        timestamp,
-                        content.lower(),
-                        project_id
+                else:  # UPDATE CURRENT SECTION
+                    logging.debug("Changing item %s to section %s", content, section_id)
+                    query = f"""
+                    UPDATE {self.dbtablename}
+                    SET
+                    item_section = ?,
+                    last_updated = ?
+                    WHERE item_content = ?
+                    AND item_project = ?
+                    """
+                    cursor.execute(
+                        query,
+                        (
+                            section_id,
+                            timestamp,
+                            content.lower(),
+                            project_id
+                        )
                     )
-                )
 
-            cursor.close()
-            if close_when_done:
-                conn.commit()
-                conn.close()
+                cursor.close()
+                if close_when_done:
+                    conn.commit()
+                    conn.close()
 
 
     def reconcile(self):
@@ -158,6 +161,7 @@ class Sorter:
         response = self.api.get_tasks(project_id=self.project_id)
         for task_list in response:
             for task in task_list:
+                logging.debug("Reconciling task %s: %s", task.id, task.content)
                 self.capitalize_item(task.id, task.content)
                 self.learn(task=task, conn=conn)
                 if task.section_id is None:
