@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import logging
+import threading
 
 from flask import Flask, request
 
@@ -17,14 +18,19 @@ logging.basicConfig(
 # Validate necessary config is provided
 project = os.getenv("PROJECT", None)
 api_token = os.getenv("APITOKEN", None)
+sync_interval = int(os.getenv("SYNC_INTERVAL", "300"))
 
 if None in (project, api_token):
     logging.error("Environment variables cannot be None - exiting.")
     sys.exit(1)
 
-# Perform a one-time learn of all tasks
 api = Sorter(api_token, project)
-api.learn_all()
+
+# Perform a one-time learn of all tasks
+def reconcile():
+    """Request a full reconcile instead of waiting for webhooks"""
+    api.reconcile()
+    threading.Timer(sync_interval, reconcile).start()
 
 @app.route("/todoist", methods=['POST'])
 def webhook():
@@ -63,3 +69,4 @@ def hello():
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5005)
+    reconcile()

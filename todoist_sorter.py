@@ -83,17 +83,16 @@ class Sorter:
         """Read all items in Todoist and learn their preferred sections"""
 
         section_id = None
+        if (task is None) == (item is None):
+            raise ValueError("Must provide either a task or an item.")
         if task is not None:
             section_id = task.section_id
             content = task.content
             project_id = task.project_id
-        elif item is not None:
+        else:
             section_id = item['section_id']
             content = item['content']
             project_id = item['project_id']
-        else:
-            print("No task presented to learn function")
-            return None
 
         if section_id is not None:
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")  # USED FOR DB UPDATES
@@ -150,23 +149,37 @@ class Sorter:
             if close_when_done:
                 conn.commit()
                 conn.close()
+        return None
 
 
-    def learn_all(self):
-        """Learn the sections of all tasks"""
+    def reconcile(self):
+        """Pull all tasks and learn or move their sections"""
         conn = self.initialize_db()
 
         response = self.api.get_tasks(project_id=self.project_id)
         for task_list in response:
             for task in task_list:
+                self.capitalize_item(task.id, task.content)
                 self.learn(task=task, conn=conn)
+                if task.section_id is None:
+                    self.adjust_item_section(task=task)
 
         conn.commit()
         conn.close()
 
 
-    def adjust_item_section(self, item):
+    def adjust_item_section(self, item=None, task=None):
         """Change the section of an item"""
-        new_section = self.get_historic_section(item_name=item['content'])
+        if (task is None) == (item is None):
+            raise ValueError("Must provide either a task or an item.")
+        if task is not None:
+            content = task.content
+            task_id = task.id
+        else:
+            content = item['content']
+            task_id = item['id']
+
+        new_section = self.get_historic_section(item_name=content)
         if new_section is not None:
-            self.api.move_task(item['id'], section_id=new_section)
+            logging.info("Moving task %s to section %s", task_id, new_section)
+            self.api.move_task(id, section_id=new_section)
