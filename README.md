@@ -19,7 +19,8 @@ Todoistsorter has two methods of action:
 4b. If item is not known, item is left where it is
 5. For updated or completed items: stores which section they were in
 
-### Reconcile Loop (default: every 5 minutes)
+### Reconcile Loop
+I've encountered situations where the Todoist webhooks simply don't come in, or they're very late. Therefore, todoistsorter can reconcile the full project on a recurring basis.
 1. Every `SYNC_INTERVAL` seconds, pull all active (not completed) tasks from your project
 2. Capitalize the first letter (if not already done)
 3. If the item is in a section, store that section in the database
@@ -40,7 +41,7 @@ Container parameters
 -----------------
 * `APITOKEN` *(required)* - Private API-token, can be retrieved from the "Integration" part of the settings in the Todoist web-interface (see above)
 * `PROJECT` *(required)* - ID of the project the project to monitor, can be retrieved from the url of the project when accessed through web-browser (see above section)
-* `SYNC_INTERVAL` *(optional, default 300)* - How often to run a full reconcile
+* `SYNC_INTERVAL` *(optional)* - How often to run a full reconcile
 * `LOGGING` *(optional, default INFO)* - What level of logging to use (CRITICAL, ERROR, WARNING, INFO, DEBUG)
 
 

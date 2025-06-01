@@ -18,7 +18,7 @@ logging.basicConfig(
 # Validate necessary config is provided
 project = os.getenv("PROJECT", None)
 api_token = os.getenv("APITOKEN", None)
-sync_interval = int(os.getenv("SYNC_INTERVAL", "300"))
+sync_interval = os.getenv("SYNC_INTERVAL", None)
 
 if None in (project, api_token):
     logging.error("Environment variables cannot be None - exiting.")
@@ -26,14 +26,20 @@ if None in (project, api_token):
 
 api = Sorter(api_token, project)
 
-# Perform a one-time learn of all tasks
 def reconcile():
     """Request a full reconcile instead of waiting for webhooks"""
     logging.debug("Initiating reconcile loop")
     api.reconcile()
     threading.Timer(sync_interval, reconcile).start()
 
-reconcile()
+# Start the reconcile loop
+if sync_interval:
+    try:
+        sync_interval = int(sync_interval)
+    except ValueError:
+        logging.fatal("Invalid sync interval provided")
+        sys.exit(1)
+    reconcile()
 
 @app.route("/todoist", methods=['POST'])
 def webhook():
