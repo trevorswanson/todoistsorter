@@ -18,6 +18,10 @@ class Sorter:
         self.dbtableprefix = 'Sections_'
         self.dbtablename = self.dbtableprefix + str(project_id)
 
+    def sanitize_log(self, body):
+        """Remove newlines so that log entries cannot be forged as easily"""
+        return body.replace('\n', '').replace('\r', '')
+
     def initialize_db(self):
         """Connect to and initialize SQLite DB"""
         conn = sqlite3.connect(self.dbfilename)
@@ -75,7 +79,7 @@ class Sorter:
         """Capitalize the first letter of the item"""
         if not item_content[0].isupper():
             new_content = item_content[0].upper() + item_content[1:]
-            logging.debug("Capitalized task \"%s\" to \"%s\"", item_content, new_content)
+            logging.debug("Capitalized task \"%s\" to \"%s\"", self.sanitize_log(item_content), self.sanitize_log(new_content))
 
             # WRITE UPDATED CONTENT TO TODOIST
             self.api.update_task(item_id, content=new_content)
@@ -101,7 +105,7 @@ class Sorter:
             # GET HISTORIC SECTION
             historic_section = self.get_historic_section(item_name=content)
             if historic_section == section_id:  # NO UPDATE NEEDED
-                logging.debug("Task %s is already in the correct section %s", content, section_id)
+                logging.debug("Task %s is already in the correct section %s", self.sanitize_log(content), self.sanitize_log(section_id))
             else:
                 # Reuse existing DB if possible
                 if None is conn:
@@ -112,7 +116,7 @@ class Sorter:
                 cursor = conn.cursor()
 
                 if historic_section is None:  # ADD ITEM TO DB
-                    logging.debug("Discovered new item %s in section %s", content, section_id)
+                    logging.debug("Discovered new item %s in section %s", self.sanitize_log(content), self.sanitize_log(section_id))
                     query = f"""
                     INSERT INTO {self.dbtablename}
                     (item_project, item_content, item_section, last_updated)
@@ -129,7 +133,7 @@ class Sorter:
                     )
 
                 else:  # UPDATE CURRENT SECTION
-                    logging.debug("Changing item %s to section %s", content, section_id)
+                    logging.debug("Changing item %s to section %s", self.sanitize_log(content), self.sanitize_log(section_id))
                     query = f"""
                     UPDATE {self.dbtablename}
                     SET
@@ -161,7 +165,7 @@ class Sorter:
         response = self.api.get_tasks(project_id=self.project_id)
         for task_list in response:
             for task in task_list:
-                logging.debug("Reconciling task %s: %s", task.id, task.content)
+                logging.debug("Reconciling task %s: %s", self.sanitize_log(task.id), self.sanitize_log(task.content))
                 self.capitalize_item(task.id, task.content)
                 self.learn(task=task, conn=conn)
                 if task.section_id is None:
@@ -184,5 +188,5 @@ class Sorter:
 
         new_section = self.get_historic_section(item_name=content)
         if new_section is not None:
-            logging.info("Moving task %s to section %s", task_id, new_section)
+            logging.info("Moving task %s to section %s", self.sanitize_log(task_id), self.sanitize_log(new_section))
             self.api.move_task(id, section_id=new_section)

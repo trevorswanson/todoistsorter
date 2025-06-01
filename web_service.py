@@ -26,6 +26,10 @@ if None in (project, api_token):
 
 api = Sorter(api_token, project)
 
+def sanitize_log(body):
+    """Remove newlines so that log entries cannot be forged as easily"""
+    return body.replace('\n', '').replace('\r', '')
+
 def reconcile():
     """Request a full reconcile instead of waiting for webhooks"""
     logging.debug("Initiating reconcile loop")
@@ -47,24 +51,24 @@ def webhook():
     bytes_data = request.data.decode('ASCII')
     body = json.loads(bytes_data)
 
-    logging.debug(json.dumps(body, indent=4, sort_keys=True))
+    logging.debug(sanitize_log(json.dumps(body)))
 
     event_name = body['event_name']
     event_data = body['event_data']
     project_id = event_data['project_id']
 
     if event_name == "item:added" and str(project_id) == str(project):
-        logging.info("%s | %s", event_name, event_data['content'])
+        logging.info("%s | %s", sanitize_log(event_name), sanitize_log(event_data['content']))
         api.capitalize_item(event_data['id'], event_data['content'])
         api.learn(item=event_data)
         api.adjust_item_section(event_data)
 
     elif (event_name in ("item:completed", "item:updated")) and str(project_id) == str(project):
-        logging.info("%s | %s", event_name, event_data['content'])
+        logging.info("%s | %s", sanitize_log(event_name), sanitize_log(event_data['content']))
         api.learn(item=event_data)
 
     else:
-        logging.warning("Unhandled event %s | %s", event_name, json.dumps(event_data))
+        logging.warning("Unhandled event %s | %s", sanitize_log(event_name), sanitize_log(json.dumps(event_data)))
         return "", 422
 
     return "", 200
