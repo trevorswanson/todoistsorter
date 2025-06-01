@@ -68,7 +68,11 @@ def webhook():
         api.learn(item=event_data)
 
     else:
-        logging.warning("Unhandled event %s | %s", sanitize_log(event_name), sanitize_log(json.dumps(event_data)))
+        logging.warning(
+            "Unhandled event %s | %s",
+            sanitize_log(event_name),
+            sanitize_log(json.dumps(event_data))
+        )
         return "", 422
 
     return "", 200
