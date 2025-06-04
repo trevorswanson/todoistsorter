@@ -92,6 +92,7 @@ def webhook():
 @app.route("/healthz", methods=['GET'])
 def healthz():
     """Default health check endpoint"""
+    api.healthcheck()
     return "TodoistSorter service is running...", 200
 
 @app.route("/", methods=['POST', 'GET'])

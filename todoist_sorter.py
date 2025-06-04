@@ -37,6 +37,10 @@ class Sorter:
         conn.commit()
         return conn
 
+    def healthcheck(self):
+        conn = self.initialize_db()
+        conn.close()
+
     def get_historic_section(self, item_id=None, item_name=None):
         """Obtain the previously-used section for an item"""
         if None is item_name:
