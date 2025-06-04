@@ -6,20 +6,20 @@ import logging
 import threading
 
 from flask import Flask, request
+from werkzeug import serving
 
 from todoist_sorter import Sorter
-from werkzeug import serving
 
 parent_log_request = serving.WSGIRequestHandler.log_request
 
 
 def log_request(self, *args, **kwargs):
+    """Log handler to suppress healthcheck requests"""
     if self.path == '/healthz':
         return
     parent_log_request(self, *args, **kwargs)
 
-def filter_healthcheck_logs():
-    serving.WSGIRequestHandler.log_request = log_request
+serving.WSGIRequestHandler.log_request = log_request
 
 app = Flask(__name__)
 
