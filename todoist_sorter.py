@@ -38,6 +38,7 @@ class Sorter:
         return conn
 
     def healthcheck(self):
+        """Perform a health check to ensure the sorter is functioning"""
         conn = self.initialize_db()
         conn.close()
 
