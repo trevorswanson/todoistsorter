@@ -8,5 +8,5 @@ COPY . .
 
 EXPOSE 5005
 
-HEALTHCHECK CMD wget --spider http://127.0.0.1:5005 || exit 1
+HEALTHCHECK CMD wget --spider http://127.0.0.1:5005/healthz || exit 1
 CMD [ "python3", "web_service.py" ]
