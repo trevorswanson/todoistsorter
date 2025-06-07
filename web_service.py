@@ -6,8 +6,20 @@ import logging
 import threading
 
 from flask import Flask, request
+from werkzeug import serving
 
 from todoist_sorter import Sorter
+
+parent_log_request = serving.WSGIRequestHandler.log_request
+
+
+def log_request(self, *args, **kwargs):
+    """Log handler to suppress healthcheck requests"""
+    if self.path == '/healthz':
+        return
+    parent_log_request(self, *args, **kwargs)
+
+serving.WSGIRequestHandler.log_request = log_request
 
 app = Flask(__name__)
 
@@ -77,11 +89,16 @@ def webhook():
 
     return "", 200
 
+@app.route("/healthz", methods=['GET'])
+def healthz():
+    """Default health check endpoint"""
+    api.healthcheck()
+    return "TodoistSorter service is running...", 200
 
 @app.route("/", methods=['POST', 'GET'])
 def hello():
-    """Default endpoint for health checks"""
-    return "TodoistSorter service is running..."
+    """Default endpoint for /"""
+    return "TodoistSorter service is running...", 200
 
 
 if __name__ == "__main__":

@@ -37,14 +37,10 @@ class Sorter:
         conn.commit()
         return conn
 
-    # def get_section_name(self, section_id):
-    #     """Return the section name based on ID"""
-    #     section_list = self.api.state['sections']
-    #     for section in section_list:
-    #         if section['id'] == section_id:
-    #             return section['name']
-    #     # RETURN FALSE IF NO MATCH IS FOUND
-    #     return False
+    def healthcheck(self):
+        """Perform a health check to ensure the sorter is functioning"""
+        conn = self.initialize_db()
+        conn.close()
 
     def get_historic_section(self, item_id=None, item_name=None):
         """Obtain the previously-used section for an item"""
