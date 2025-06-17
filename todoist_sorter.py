@@ -209,4 +209,4 @@ class Sorter:
                 self.sanitize_log(task_id),
                 self.sanitize_log(new_section)
             )
-            self.api.move_task(id, section_id=new_section)
+            self.api.move_task(task_id, section_id=new_section)
